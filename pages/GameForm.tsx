@@ -70,20 +70,34 @@ const GameForm: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation: Cover URL is now optional to allow deletion
-    if (!formData.name || !formData.author || formData.price === undefined) {
-      alert("名称、作者和价格为必填项。");
+    // Validation
+    const name = formData.name?.trim();
+    const author = formData.author?.trim();
+    // Check if price is defined and is a valid number (not NaN)
+    const isValidPrice = formData.price !== undefined && !isNaN(formData.price);
+
+    // Name, Author, Price are always required
+    if (!name || !author || !isValidPrice) {
+      // Browser popup alert as requested
+      window.alert("名称、作者和价格为必填项。");
+      return;
+    }
+
+    // Requirement: Cover Image is strictly required when creating a NEW game
+    // For Edit, coverUrl can be empty (meaning user removed it)
+    if (!isEdit && !formData.coverUrl) {
+      window.alert("创建新游戏时必须上传封面图片。");
       return;
     }
 
     if (isEdit && id) {
       // Logic: Update
       GameService.update(id, formData);
-      alert('游戏更新成功！');
+      window.alert('游戏更新成功！');
     } else {
       // Logic: Add
       GameService.add(formData as Omit<Game, 'id'>);
-      alert('游戏添加成功！');
+      window.alert('游戏添加成功！');
     }
 
     // Return to list with params preserved
@@ -167,11 +181,13 @@ const GameForm: React.FC = () => {
 
           {/* Image Upload */}
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">封面图片</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">封面图片 {isEdit ? '(可选)' : '*'}</label>
             <div className="flex items-start space-x-4">
                <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-32 h-24 bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center cursor-pointer hover:border-cyan-500 transition-colors relative group overflow-visible"
+                  className={`w-32 h-24 bg-slate-800 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-cyan-500 transition-colors relative group overflow-visible ${
+                      !isEdit && !previewUrl ? 'border-cyan-500/50' : 'border-slate-600'
+                  }`}
                 >
                   {previewUrl ? (
                     <>
@@ -186,7 +202,9 @@ const GameForm: React.FC = () => {
                          </button>
                     </>
                   ) : (
-                    <span className="text-xs text-slate-500 text-center px-2">点击上传</span>
+                    <span className="text-xs text-slate-500 text-center px-2">
+                        {isEdit ? '点击上传' : '点击上传*'}
+                    </span>
                   )}
                </div>
                <div className="flex-1">

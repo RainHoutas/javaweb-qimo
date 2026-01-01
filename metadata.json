@@ -1,0 +1,5 @@
+{
+  "name": "CyberStore - 游戏售卖平台",
+  "description": "一个高性能、未来风格的游戏销售和管理平台，具备持久化存储、Excel 导出和实时数据分析模拟功能。",
+  "requestFramePermissions": []
+}

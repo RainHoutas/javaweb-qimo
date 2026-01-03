@@ -24,7 +24,8 @@ const GameList: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   
   // View Mode: 'pagination' (Paged Table) or 'scroll' (Vertical Scroll Table All)
-  const [viewMode, setViewMode] = useState<'pagination' | 'scroll'>('pagination');
+  // FIX: Initialize from URL to persist state across navigations
+  const [viewMode, setViewMode] = useState<'pagination' | 'scroll'>((searchParams.get('view') as 'pagination' | 'scroll') || 'pagination');
 
   // Sync state to URL whenever filters change
   useEffect(() => {
@@ -34,6 +35,9 @@ const GameList: React.FC = () => {
     if (minPrice) params.minPrice = minPrice;
     if (maxPrice) params.maxPrice = maxPrice;
     
+    // FIX: Persist view mode in URL
+    params.view = viewMode;
+
     // Only persist page if in pagination mode
     if (viewMode === 'pagination') {
         const currentPage = searchParams.get('page') || '1';

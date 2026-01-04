@@ -18,6 +18,7 @@ const SESSION_ID_KEY = 'cyber_session_id';
 const ONLINE_KEY = 'cyber_online_count';
 const PRESENCE_KEY = 'cyber_presence_token';
 const SKIP_ALERT_KEY = 'cyber_skip_login_alert';
+const FIRST_VISIT_KEY = 'cyber_first_visit';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -114,6 +115,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
   if (!isReady) return null;
 
   if (!isAuthenticated) {
+    const first = sessionStorage.getItem(FIRST_VISIT_KEY);
+    if (!first) {
+      sessionStorage.setItem(FIRST_VISIT_KEY, '1');
+      return <Navigate to="/login" state={{ from: location, reason: 'unauthenticated' }} replace />;
+    }
     const skip = sessionStorage.getItem(SKIP_ALERT_KEY);
     if (!skip) {
       const already = sessionStorage.getItem('cyber_login_alert');
@@ -133,7 +139,8 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<AuthPage />} />
-      
+      <Route path="/" element={<Navigate to="/login" replace />} />
+
       {/* Protected Routes */}
       <Route path="/games" element={
         <ProtectedRoute>
@@ -166,7 +173,7 @@ const AppRoutes = () => {
       } />
 
       {/* Default Redirect */}
-      <Route path="*" element={<Navigate to="/games" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 };

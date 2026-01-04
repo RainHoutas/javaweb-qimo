@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { UserService } from '../services/mockDatabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Icons } from '../constants';
+import { getCookie, setCookie, deleteCookie } from '../services/cookie';
+const SKIP_ALERT_KEY = 'cyber_skip_login_alert';
 
 const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -10,9 +12,30 @@ const AuthPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Clear logout skip flag when on login page to restore unauthenticated alerts
+  useEffect(() => {
+    sessionStorage.removeItem(SKIP_ALERT_KEY);
+  }, []);
+
+  // Preload remembered credentials
+  useEffect(() => {
+    const saved = getCookie('cyber_saved_login');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFormData({ username: parsed.username || '', password: parsed.password || '', confirmPassword: '' });
+        setRememberMe(!!parsed.remember);
+      } catch (_) {
+        deleteCookie('cyber_saved_login');
+      }
+    }
+  }, []);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,14 +48,20 @@ const AuthPage: React.FC = () => {
     }
 
     if (isLogin) {
-      const user = UserService.login(formData.username, formData.password);
-      if (user) {
-        login(user.username);
-        navigate('/games');
+        const user = UserService.login(formData.username, formData.password);
+        if (user) {
+        // Persist remembered credentials if requested
+        if (rememberMe) {
+          setCookie('cyber_saved_login', JSON.stringify({ username: formData.username, password: formData.password, remember: true }), 7);
+        } else {
+          deleteCookie('cyber_saved_login');
+        }
+        login(user.username, rememberMe);
+          navigate('/games');
+        } else {
+          setError('用户名或密码错误。');
+        }
       } else {
-        setError('用户名或密码错误。');
-      }
-    } else {
       // Register
       if (UserService.register({ username: formData.username, password: formData.password, role: 'user' })) {
         setSuccess('注册成功！正在跳转至登录页...');
@@ -101,19 +130,19 @@ const AuthPage: React.FC = () => {
           </div>
 
           {isLogin && (
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-offset-slate-900 focus:ring-cyan-500"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-400">
-                记住密码
-              </label>
-            </div>
-          )}
+             <div className="flex items-center">
+               <input
+                 id="remember-me"
+                 type="checkbox"
+                 checked={rememberMe}
+                 onChange={(e) => setRememberMe(e.target.checked)}
+                 className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-offset-slate-900 focus:ring-cyan-500"
+               />
+               <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-400">
+                7天内免登录
+               </label>
+             </div>
+           )}
 
           <button
             type="submit"

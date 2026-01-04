@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { GameService } from '../services/mockDatabase';
+import { GameApi } from '../services/api';
 import { Game } from '../types';
 import { Icons } from '../constants';
 
@@ -12,9 +12,9 @@ const GameDetail: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      const found = GameService.getById(id);
-      if (found) setGame(found);
-      else navigate('/games');
+      GameApi.get(id).then(found => {
+        setGame(found);
+      }).catch(() => navigate('/games'));
     }
   }, [id, navigate]);
 

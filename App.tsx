@@ -7,12 +7,14 @@ import GameForm from './pages/GameForm';
 import GameDetail from './pages/GameDetail';
 import Stats from './pages/Stats';
 import { User, AuthContextType } from './types';
-import { UserService } from './services/mockDatabase';
-import { setCookie, getCookie, deleteCookie } from './services/cookie';
+import { AuthApi } from './services/api';
+import { deleteCookie } from './services/cookie';
 
 // 1. Auth Context Implementation
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const TOKEN_KEY = 'cyber_token';
+const SESSION_ID_KEY = 'cyber_session_id';
 const ONLINE_KEY = 'cyber_online_count';
 const PRESENCE_KEY = 'cyber_presence_token';
 const SKIP_ALERT_KEY = 'cyber_skip_login_alert';
@@ -20,95 +22,79 @@ const SKIP_ALERT_KEY = 'cyber_skip_login_alert';
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const [onlineCount, setOnlineCount] = useState<number>(() => {
-    const stored = Number(localStorage.getItem(ONLINE_KEY) || '0');
-    return Number.isFinite(stored) ? stored : 0;
-  });
-
-  const updateOnlineStorage = (delta: number) => {
-    const current = Number(localStorage.getItem(ONLINE_KEY) || '0');
-    const next = Math.max(0, (Number.isFinite(current) ? current : 0) + delta);
-    localStorage.setItem(ONLINE_KEY, String(next));
-    setOnlineCount(next);
-  };
+  const [onlineCount, setOnlineCount] = useState<number>(0);
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
+  const [sessionId, setSessionId] = useState<string | null>(() => sessionStorage.getItem(SESSION_ID_KEY));
 
   const registerPresence = () => {
     const existingToken = sessionStorage.getItem(PRESENCE_KEY);
-    if (existingToken) return; // Already counted for this tab
-    const token = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-    sessionStorage.setItem(PRESENCE_KEY, token);
-    updateOnlineStorage(1);
+    if (existingToken) return;
+    const t = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    sessionStorage.setItem(PRESENCE_KEY, t);
   };
 
   const removePresence = () => {
     const existingToken = sessionStorage.getItem(PRESENCE_KEY);
     if (!existingToken) return;
     sessionStorage.removeItem(PRESENCE_KEY);
-    updateOnlineStorage(-1);
   };
 
-  // NOTE: Previous simulation of random users removed per user request. 
-  // In a real app, this would use a WebSocket or polling to get the actual server-side session count.
-  // For this local demo, "1" represents the current active user.
-
-  // Check cookie for persisted session
+  // Session restore per tab
   useEffect(() => {
-    const storedUser = getCookie('cyber_current_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      registerPresence();
-    }
-    setIsReady(true);
-  }, []);
-
-  // Sync online count across tabs
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === ONLINE_KEY && e.newValue) {
-        const next = Number(e.newValue);
-        if (Number.isFinite(next)) setOnlineCount(next);
+    (async () => {
+      const storedToken = sessionStorage.getItem(TOKEN_KEY);
+      const storedSession = sessionStorage.getItem(SESSION_ID_KEY);
+      if (!storedToken) {
+        setIsReady(true);
+        return;
       }
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
-
-  // Remove presence on tab close/refresh if logged in
-  useEffect(() => {
-    const onUnload = () => {
-      if (sessionStorage.getItem(PRESENCE_KEY)) {
+      try {
+        const res = await AuthApi.me(storedToken, storedSession || undefined);
+        setUser(res.user);
+        setToken(storedToken);
+        setSessionId(res.sessionId || storedSession || null);
+        registerPresence();
+        setOnlineCount(res.online || 0);
+      } catch (_) {
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(SESSION_ID_KEY);
+        setUser(null);
         removePresence();
+        setOnlineCount(0);
+      } finally {
+        setIsReady(true);
       }
-    };
-    window.addEventListener('beforeunload', onUnload);
-    return () => window.removeEventListener('beforeunload', onUnload);
+    })();
   }, []);
 
-  const login = (username: string, remember = false) => {
-    // In a real app, we'd fetch the full user object securely
-    const allUsers = UserService.getAll();
-    const found = allUsers.find(u => u.username === username);
-    if (found) {
-      const safeUser = { ...found }; 
-      delete safeUser.password;
-      setUser(safeUser);
-      sessionStorage.removeItem('cyber_login_alert');
-      // Remember flag controls cookie expiry (defaults to session cookie)
-      setCookie('cyber_current_user', JSON.stringify(safeUser), remember ? 7 : undefined);
-      registerPresence();
-    }
+  const login = async (username: string, password: string, remember = false) => {
+    const res = await AuthApi.login(username, password, remember);
+    setUser(res.user);
+    setToken(res.token);
+    setSessionId(res.sessionId);
+    sessionStorage.setItem(TOKEN_KEY, res.token);
+    sessionStorage.setItem(SESSION_ID_KEY, res.sessionId);
+    sessionStorage.removeItem('cyber_login_alert');
+    registerPresence();
+    setOnlineCount(res.online || 0);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (token) await AuthApi.logout(token, sessionId || undefined);
     setUser(null);
-    deleteCookie('cyber_current_user');
+    setToken(null);
+    setSessionId(null);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_ID_KEY);
     sessionStorage.removeItem('cyber_login_alert');
     sessionStorage.setItem(SKIP_ALERT_KEY, '1');
+    deleteCookie('cyber_saved_login');
     removePresence();
+    setOnlineCount(0);
   };
 
   return (
-    <AuthContext.Provider value={{ user, onlineCount, login, logout, isAuthenticated: !!user, isReady }}>
+    <AuthContext.Provider value={{ user, onlineCount, token, sessionId, login, logout, isAuthenticated: !!user, isReady }}>
       {children}
     </AuthContext.Provider>
   );
@@ -125,21 +111,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
   const { isAuthenticated, isReady } = useAuth();
   const location = useLocation();
 
-  if (!isReady) {
-    return null; // Avoid flashing redirect/alert before auth is restored
-  }
+  if (!isReady) return null;
 
   if (!isAuthenticated) {
     const skip = sessionStorage.getItem(SKIP_ALERT_KEY);
-    if (skip) {
-      return <Navigate to="/login" state={{ from: location, reason: 'unauthenticated' }} replace />;
+    if (!skip) {
+      const already = sessionStorage.getItem('cyber_login_alert');
+      if (!already) {
+        window.alert('未登录，请先登录后再访问。');
+        sessionStorage.setItem('cyber_login_alert', '1');
+      }
     }
-    const already = sessionStorage.getItem('cyber_login_alert');
-    if (!already) {
-      window.alert('未登录，请先登录后再访问。');
-      sessionStorage.setItem('cyber_login_alert', '1');
-    }
-    // Redirect to login with reason, no popup to avoid double alerts in StrictMode
     return <Navigate to="/login" state={{ from: location, reason: 'unauthenticated' }} replace />;
   }
 

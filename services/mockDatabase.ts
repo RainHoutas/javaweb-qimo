@@ -44,49 +44,15 @@ const seedData = () => {
 seedData();
 
 export const UserService = {
-  getAll: (): User[] => {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  },
-  register: (user: Omit<User, 'id'> & { password: string }): boolean => {
-    const users = UserService.getAll();
-    if (users.some(u => u.username === user.username)) {
-      return false; // Duplicate
-    }
-    const newUser: User = { ...user, id: Date.now().toString(), role: 'user' };
-    users.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    return true;
-  },
-  login: (username: string, password: string): User | null => {
-    const users = UserService.getAll();
-    return users.find(u => u.username === username && u.password === password) || null;
-  }
+  getAll: () => [],
+  register: () => false,
+  login: () => null
 };
 
 export const GameService = {
-  getAll: (): Game[] => {
-    return JSON.parse(localStorage.getItem(GAMES_KEY) || '[]');
-  },
-  add: (game: Omit<Game, 'id'>) => {
-    const games = GameService.getAll();
-    const newGame = { ...game, id: Date.now().toString() };
-    games.unshift(newGame);
-    localStorage.setItem(GAMES_KEY, JSON.stringify(games));
-  },
-  update: (id: string, updates: Partial<Game>) => {
-    const games = GameService.getAll();
-    const index = games.findIndex(g => g.id === id);
-    if (index !== -1) {
-      games[index] = { ...games[index], ...updates };
-      localStorage.setItem(GAMES_KEY, JSON.stringify(games));
-    }
-  },
-  delete: (id: string) => {
-    const games = GameService.getAll();
-    const newGames = games.filter(g => g.id !== id);
-    localStorage.setItem(GAMES_KEY, JSON.stringify(newGames));
-  },
-  getById: (id: string): Game | undefined => {
-    return GameService.getAll().find(g => g.id === id);
-  }
+  getAll: () => [],
+  add: () => undefined,
+  update: () => undefined,
+  delete: () => undefined,
+  getById: () => undefined
 };

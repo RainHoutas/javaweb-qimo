@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { GameService } from '../services/mockDatabase';
+import { GameApi } from '../services/api';
 import { Game } from '../types';
 import { Icons } from '../constants';
 
@@ -24,13 +24,10 @@ const GameForm: React.FC = () => {
 
   useEffect(() => {
     if (isEdit && id) {
-      const game = GameService.getById(id);
-      if (game) {
+      GameApi.get(id).then(game => {
         setFormData(game);
         setPreviewUrl(game.coverUrl);
-      } else {
-        navigate('/games');
-      }
+      }).catch(() => navigate('/games'));
     }
   }, [id, isEdit, navigate]);
 
@@ -67,7 +64,7 @@ const GameForm: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -92,11 +89,11 @@ const GameForm: React.FC = () => {
 
     if (isEdit && id) {
       // Logic: Update
-      GameService.update(id, formData);
+      await GameApi.update(id, formData);
       window.alert('游戏更新成功！');
     } else {
       // Logic: Add
-      GameService.add(formData as Omit<Game, 'id'>);
+      await GameApi.add(formData as Omit<Game, 'id'>);
       window.alert('游戏添加成功！');
     }
 

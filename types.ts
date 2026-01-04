@@ -26,8 +26,10 @@ export interface GameFilterParams {
 export interface AuthContextType {
   user: User | null;
   onlineCount: number;
-  login: (username: string, remember?: boolean) => void;
-  logout: () => void;
+  token: string | null;
+  sessionId: string | null;
+  login: (username: string, password: string, remember?: boolean) => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isReady: boolean;
 }

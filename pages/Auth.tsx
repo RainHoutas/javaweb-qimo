@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { UserService } from '../services/mockDatabase';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Icons } from '../constants';
+import { AuthApi } from '../services/api';
 import { getCookie, setCookie, deleteCookie } from '../services/cookie';
+import { Icons } from '../constants';
+
 const SKIP_ALERT_KEY = 'cyber_skip_login_alert';
 
 const AuthPage: React.FC = () => {
@@ -15,7 +16,6 @@ const AuthPage: React.FC = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Clear logout skip flag when on login page to restore unauthenticated alerts
   useEffect(() => {
@@ -37,7 +37,7 @@ const AuthPage: React.FC = () => {
   }, []);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -47,28 +47,22 @@ const AuthPage: React.FC = () => {
       return;
     }
 
-    if (isLogin) {
-        const user = UserService.login(formData.username, formData.password);
-        if (user) {
-        // Persist remembered credentials if requested
+    try {
+      if (isLogin) {
+        await login(formData.username, formData.password, rememberMe);
         if (rememberMe) {
           setCookie('cyber_saved_login', JSON.stringify({ username: formData.username, password: formData.password, remember: true }), 7);
         } else {
           deleteCookie('cyber_saved_login');
         }
-        login(user.username, rememberMe);
-          navigate('/games');
-        } else {
-          setError('用户名或密码错误。');
-        }
+        navigate('/games');
       } else {
-      // Register
-      if (UserService.register({ username: formData.username, password: formData.password, role: 'user' })) {
+        await AuthApi.register(formData.username, formData.password);
         setSuccess('注册成功！正在跳转至登录页...');
         setTimeout(() => setIsLogin(true), 1500);
-      } else {
-        setError('用户名已存在，无法注册。');
       }
+    } catch (err: any) {
+      setError(err?.message || '操作失败');
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { GameService } from '../services/mockDatabase';
+import { GameApi } from '../services/api';
 import { Game } from '../types';
 import { Icons, ITEMS_PER_PAGE } from '../constants';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -46,8 +46,9 @@ const GameList: React.FC = () => {
     setSearchParams(params, { replace: true });
   }, [nameFilter, authorFilter, minPrice, maxPrice, setSearchParams, viewMode]);
 
-  const refreshGames = () => {
-    setGames(GameService.getAll());
+  const refreshGames = async () => {
+    const list = await GameApi.list();
+    setGames(list);
   };
 
   useEffect(() => {
@@ -101,12 +102,11 @@ const GameList: React.FC = () => {
     setDeleteId(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
-      GameService.delete(deleteId);
-      refreshGames();
+      await GameApi.remove(deleteId);
+      await refreshGames();
       setDeleteId(null);
-      // Ensure we don't stay on an empty page
       if (viewMode === 'pagination' && paginatedGames.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
       }
@@ -296,8 +296,8 @@ const GameList: React.FC = () => {
                             <Icons.View className="w-4 h-4" />
                         </button>
                         <button 
-                            onClick={() => handleEditClick(game.id)}
-                            className="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors border border-cyan-500/20" 
+                            onClick={() => navigate(`/games/edit/${game.id}?${searchParams.toString()}`)}
+                            className="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors border border-cyan-500/20"
                             title="编辑">
                             <Icons.Edit className="w-4 h-4" />
                         </button>
@@ -379,3 +379,4 @@ const GameList: React.FC = () => {
 };
 
 export default GameList;
+

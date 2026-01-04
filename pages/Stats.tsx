@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { GameService } from '../services/mockDatabase';
+import { GameApi } from '../services/api';
+import { Game } from '../types';
 
 // Requirements: Use recharts.
 const Stats: React.FC = () => {
-  const games = GameService.getAll();
+  const [games, setGames] = useState<Game[]>([]);
+
+  useEffect(() => {
+    GameApi.list().then(setGames).catch(() => setGames([]));
+  }, []);
 
   // Prepare data: Count games per author
   const authorData = Object.values(games.reduce((acc: any, game) => {

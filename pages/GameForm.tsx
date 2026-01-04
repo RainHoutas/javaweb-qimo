@@ -3,12 +3,15 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { GameApi } from '../services/api';
 import { Game } from '../types';
 import { Icons } from '../constants';
+import { useAuth } from '../App';
 
 const GameForm: React.FC = () => {
   const { id } = useParams(); // If ID exists, it's Edit mode
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEdit = !!id;
+
+  const { token, sessionId } = useAuth();
 
   const [formData, setFormData] = useState<Partial<Game>>({
     name: '',
@@ -24,12 +27,12 @@ const GameForm: React.FC = () => {
 
   useEffect(() => {
     if (isEdit && id) {
-      GameApi.get(id).then(game => {
+      GameApi.get(id, token || undefined, sessionId || undefined).then(game => {
         setFormData(game);
         setPreviewUrl(game.coverUrl);
       }).catch(() => navigate('/games'));
     }
-  }, [id, isEdit, navigate]);
+  }, [id, isEdit, navigate, token, sessionId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -89,11 +92,11 @@ const GameForm: React.FC = () => {
 
     if (isEdit && id) {
       // Logic: Update
-      await GameApi.update(id, formData);
+      await GameApi.update(id, formData, token || undefined, sessionId || undefined);
       window.alert('游戏更新成功！');
     } else {
       // Logic: Add
-      await GameApi.add(formData as Omit<Game, 'id'>);
+      await GameApi.add(formData as Omit<Game, 'id'>, token || undefined, sessionId || undefined);
       window.alert('游戏添加成功！');
     }
 
@@ -246,3 +249,4 @@ const GameForm: React.FC = () => {
 };
 
 export default GameForm;
+

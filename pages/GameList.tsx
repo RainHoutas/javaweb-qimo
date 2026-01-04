@@ -5,10 +5,12 @@ import { Game } from '../types';
 import { Icons, ITEMS_PER_PAGE } from '../constants';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { utils, writeFile } from 'xlsx';
+import { useAuth } from '../App';
 
 const GameList: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { token, sessionId } = useAuth();
 
   // State initialization from URL params
   const [nameFilter, setNameFilter] = useState(searchParams.get('name') || '');
@@ -47,7 +49,7 @@ const GameList: React.FC = () => {
   }, [nameFilter, authorFilter, minPrice, maxPrice, setSearchParams, viewMode]);
 
   const refreshGames = async () => {
-    const list = await GameApi.list();
+    const list = await GameApi.list(token || undefined, sessionId || undefined);
     setGames(list);
   };
 
@@ -104,7 +106,7 @@ const GameList: React.FC = () => {
 
   const confirmDelete = async () => {
     if (deleteId) {
-      await GameApi.remove(deleteId);
+      await GameApi.remove(deleteId, token || undefined, sessionId || undefined);
       await refreshGames();
       setDeleteId(null);
       if (viewMode === 'pagination' && paginatedGames.length === 1 && currentPage > 1) {

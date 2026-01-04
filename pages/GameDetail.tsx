@@ -3,20 +3,22 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { GameApi } from '../services/api';
 import { Game } from '../types';
 import { Icons } from '../constants';
+import { useAuth } from '../App';
 
 const GameDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [game, setGame] = useState<Game | null>(null);
+  const { token, sessionId } = useAuth();
 
   useEffect(() => {
     if (id) {
-      GameApi.get(id).then(found => {
+      GameApi.get(id, token || undefined, sessionId || undefined).then(found => {
         setGame(found);
       }).catch(() => navigate('/games'));
     }
-  }, [id, navigate]);
+  }, [id, navigate, token, sessionId]);
 
   if (!game) return null;
 

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon app.js",
-    "start": "node app.js"
+    "start": "node app.js",
+    "seed:games": "node ./scripts/seedGames.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

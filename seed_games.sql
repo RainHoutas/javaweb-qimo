@@ -1,0 +1,16 @@
+INSERT OR REPLACE INTO games (name, price, author, cover_url, description, release_date, created_at) VALUES
+('Elden Ring', 59.99, 'FromSoftware', 'https://picsum.photos/seed/elden/600/400', '开放世界动作RPG，与半神决战并重铸法环。', '2022-02-25', date('now')),
+('God of War Ragnarök', 49.99, 'Santa Monica Studio', 'https://picsum.photos/seed/gowr/600/400', '克雷托斯与阿特柔斯的冒险旅程。', '2022-11-09', date('now')),
+('Hogwarts Legacy', 39.99, 'Portkey Games', 'https://picsum.photos/seed/hogwarts/600/400', '在霍格沃茨的魔法世界中学习与冒险。', '2023-02-10', date('now')),
+('Marvel''s Spider-Man: Miles Morales', 29.99, 'Insomniac Games', 'https://picsum.photos/seed/spidermanm/600/400', '体验迈尔斯·莫拉莱斯的蜘蛛侠传奇。', '2020-11-12', date('now')),
+('The Last of Us Part II', 39.99, 'Naughty Dog', 'https://picsum.photos/seed/tlou2/600/400', '艾莉的复仇之旅。', '2020-06-19', date('now')),
+('Ghost of Tsushima', 49.99, 'Sucker Punch Productions', 'https://picsum.photos/seed/tsushima/600/400', '对马岛武士抵抗蒙古。', '2020-07-17', date('now')),
+('Sekiro: Shadows Die Twice', 59.99, 'FromSoftware', 'https://picsum.photos/seed/sekiro/600/400', '战国忍者潜行战斗。', '2019-03-22', date('now')),
+('Dark Souls III', 39.99, 'FromSoftware', 'https://picsum.photos/seed/darksouls3/600/400', '黑暗奇幻高难度动作。', '2016-03-24', date('now')),
+('Bloodborne', 39.99, 'FromSoftware', 'https://picsum.photos/seed/bloodborne/600/400', '哥特风硬核动作。', '2015-03-24', date('now')),
+('Demon''s Souls', 39.99, 'Bluepoint Games', 'https://picsum.photos/seed/demonsouls/600/400', '次世代重制魂系起源。', '2020-11-12', date('now')),
+('Resident Evil Village', 49.99, 'Capcom', 'https://picsum.photos/seed/re8/600/400', '恐怖村庄求生。', '2021-05-07', date('now')),
+('Monster Hunter: World', 39.99, 'Capcom', 'https://picsum.photos/seed/mhw/600/400', '合作狩猎巨兽。', '2018-08-09', date('now')),
+('The Witcher 3: Wild Hunt', 39.99, 'CD Projekt Red', 'https://picsum.photos/seed/witcher3/600/400', '杰洛特的开放世界冒险。', '2015-05-19', date('now')),
+('Cyberpunk 2077', 59.99, 'CD Projekt Red', 'https://picsum.photos/seed/cyberpunk2077/600/400', '夜之城赛博朋克。', '2020-12-10', date('now')),
+('DOOM Eternal', 39.99, 'id Software', 'https://picsum.photos/seed/doom/600/400', '极速 FPS 与恶魔战斗。', '2020-03-20', date('now'));

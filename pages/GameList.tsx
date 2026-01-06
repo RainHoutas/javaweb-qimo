@@ -10,7 +10,8 @@ import { useAuth } from '../App';
 const GameList: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { token, sessionId } = useAuth();
+  const { token, sessionId, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   // State initialization from URL params
   const [nameFilter, setNameFilter] = useState(searchParams.get('name') || '');
@@ -94,6 +95,11 @@ const GameList: React.FC = () => {
 
   const confirmEdit = () => {
     if (editId) {
+      if (!isAdmin) {
+        alert('权限不足：只有管理员可以编辑游戏。');
+        setEditId(null);
+        return;
+      }
       const params = new URLSearchParams(searchParams);
       navigate(`/games/edit/${editId}?${params.toString()}`);
       setEditId(null);
@@ -101,18 +107,31 @@ const GameList: React.FC = () => {
   };
 
   const handleDeleteClick = (id: string) => {
+    if (!isAdmin) {
+      alert('权限不足：只有管理员可以删除游戏。');
+      return;
+    }
     setDeleteId(id);
   };
 
   const confirmDelete = async () => {
     if (deleteId) {
-      await GameApi.remove(deleteId, token || undefined, sessionId || undefined);
-      await refreshGames();
-      setDeleteId(null);
-      if (viewMode === 'pagination' && paginatedGames.length === 1 && currentPage > 1) {
-          handlePageChange(currentPage - 1);
+      try {
+        await GameApi.remove(deleteId, token || undefined, sessionId || undefined);
+        await refreshGames();
+        setDeleteId(null);
+        if (viewMode === 'pagination' && paginatedGames.length === 1 && currentPage > 1) {
+            handlePageChange(currentPage - 1);
+        }
+        alert('游戏删除成功。');
+      } catch (err: any) {
+        const msg = String(err?.message || err || '');
+        if (msg.includes('403')) {
+          alert('权限不足：只有管理员可以删除游戏。');
+        } else {
+          alert(`删除失败：${msg}`);
+        }
       }
-      alert('游戏删除成功。');
     }
   };
 
@@ -178,7 +197,13 @@ const GameList: React.FC = () => {
             导出 Excel
           </button>
           <button 
-            onClick={() => navigate(`/games/add?${searchParams.toString()}`)}
+            onClick={() => {
+              if (!isAdmin) {
+                alert('权限不足：只有管理员可以添加游戏。');
+                return;
+              }
+              navigate(`/games/add?${searchParams.toString()}`);
+            }}
             className="flex items-center px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg shadow-lg shadow-cyan-500/20 transition-all text-sm font-bold"
           >
             <Icons.Add className="w-4 h-4 mr-2" />
@@ -298,7 +323,7 @@ const GameList: React.FC = () => {
                             <Icons.View className="w-4 h-4" />
                         </button>
                         <button 
-                            onClick={() => navigate(`/games/edit/${game.id}?${searchParams.toString()}`)}
+                            onClick={() => handleEditClick(game.id)}
                             className="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors border border-cyan-500/20"
                             title="编辑">
                             <Icons.Edit className="w-4 h-4" />

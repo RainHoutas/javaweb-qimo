@@ -10,7 +10,8 @@ const GameDetail: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [game, setGame] = useState<Game | null>(null);
-  const { token, sessionId } = useAuth();
+  const { token, sessionId, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (id) {
@@ -90,7 +91,13 @@ const GameDetail: React.FC = () => {
                         立即购买
                     </button>
                      <button 
-                        onClick={() => navigate(`/games/edit/${game.id}?${searchParams.toString()}`)}
+                        onClick={() => {
+                          if (!isAdmin) {
+                            alert('权限不足：只有管理员可以编辑游戏。');
+                            return;
+                          }
+                          navigate(`/games/edit/${game.id}?${searchParams.toString()}`);
+                        }}
                         className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center">
                         <Icons.Edit className="w-4 h-4 mr-2" />
                         编辑游戏

@@ -11,7 +11,8 @@ const GameForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isEdit = !!id;
 
-  const { token, sessionId } = useAuth();
+  const { token, sessionId, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const [formData, setFormData] = useState<Partial<Game>>({
     name: '',
@@ -26,13 +27,18 @@ const GameForm: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!isAdmin) {
+      window.alert('权限不足，仅管理员可以新增或修改游戏。');
+      navigate(`/games?${searchParams.toString()}`);
+      return;
+    }
     if (isEdit && id) {
       GameApi.get(id, token || undefined, sessionId || undefined).then(game => {
         setFormData(game);
         setPreviewUrl(game.coverUrl);
       }).catch(() => navigate('/games'));
     }
-  }, [id, isEdit, navigate, token, sessionId]);
+  }, [id, isEdit, navigate, token, sessionId, isAdmin, searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -90,14 +96,24 @@ const GameForm: React.FC = () => {
       return;
     }
 
-    if (isEdit && id) {
-      // Logic: Update
-      await GameApi.update(id, formData, token || undefined, sessionId || undefined);
-      window.alert('游戏更新成功！');
-    } else {
-      // Logic: Add
-      await GameApi.add(formData as Omit<Game, 'id'>, token || undefined, sessionId || undefined);
-      window.alert('游戏添加成功！');
+    try {
+      if (isEdit && id) {
+        // Logic: Update
+        await GameApi.update(id, formData, token || undefined, sessionId || undefined);
+        window.alert('游戏更新成功！');
+      } else {
+        // Logic: Add
+        await GameApi.add(formData as Omit<Game, 'id'>, token || undefined, sessionId || undefined);
+        window.alert('游戏添加成功！');
+      }
+    } catch (err: any) {
+      const msg = String(err?.message || err || '');
+      if (msg.includes('403')) {
+        window.alert('权限不足：只有管理员可以执行此操作。');
+      } else {
+        window.alert(`保存失败：${msg}`);
+      }
+      return;
     }
 
     // Return to list with params preserved
@@ -228,20 +244,21 @@ const GameForm: React.FC = () => {
           </div>
 
           <div className="pt-6 border-t border-slate-800 flex justify-end space-x-4">
-             <button
-                type="button"
-                onClick={() => navigate(`/games?${searchParams.toString()}`)}
-                className="px-6 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
-             >
-                取消
-             </button>
-             <button
-                type="submit"
-                className="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-cyan-500 text-white rounded-lg shadow-lg shadow-cyan-500/25 font-bold text-sm transform transition-transform hover:scale-105"
-             >
-                {isEdit ? '保存修改' : '创建游戏'}
-             </button>
-          </div>
+              <button
+                 type="button"
+                 onClick={() => navigate(`/games?${searchParams.toString()}`)}
+                 className="px-6 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
+              >
+                 取消
+              </button>
+              <button
+                 type="submit"
+                 disabled={!isAdmin}
+                 className="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-cyan-500 text-white rounded-lg shadow-lg shadow-cyan-500/25 font-bold text-sm transform transition-transform hover:scale-105"
+              >
+                 {isEdit ? '保存修改' : '创建游戏'}
+              </button>
+           </div>
         </form>
       </div>
     </div>

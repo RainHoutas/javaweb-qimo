@@ -17,12 +17,12 @@ const AuthPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Clear logout skip flag when on login page to restore unauthenticated alerts
+  // 进入登录页时清除“跳过未登录提醒”的标记，恢复未登录提示
   useEffect(() => {
     sessionStorage.removeItem(SKIP_ALERT_KEY);
   }, []);
 
-  // Preload remembered credentials
+  // 预填已记住的账号密码
   useEffect(() => {
     const saved = getCookie('cyber_saved_login');
     if (saved) {
@@ -68,7 +68,7 @@ const AuthPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#050511] relative overflow-hidden">
-        {/* Animated Background Elements */}
+        {/* 动态背景特效 */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-500/10 blur-[100px] animate-pulse"></div>
              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-500/10 blur-[100px] animate-pulse" style={{animationDelay: '2s'}}></div>

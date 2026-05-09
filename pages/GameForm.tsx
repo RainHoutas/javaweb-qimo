@@ -6,7 +6,7 @@ import { Icons } from '../constants';
 import { useAuth } from '../App';
 
 const GameForm: React.FC = () => {
-  const { id } = useParams(); // If ID exists, it's Edit mode
+  const { id } = useParams(); // 如果 ID 存在，则为编辑模式
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEdit = !!id;
@@ -48,7 +48,7 @@ const GameForm: React.FC = () => {
     }));
   };
 
-  // Convert uploaded file to Base64 to store in LocalStorage (Requirement: Image Upload)
+  // 将上传的文件转为 Base64，用于本地存储封面
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -62,7 +62,7 @@ const GameForm: React.FC = () => {
     }
   };
 
-  // Handle removing the existing image
+  // 删除已选封面
   const handleRemoveImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -76,21 +76,20 @@ const GameForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
+    // 校验
     const name = formData.name?.trim();
     const author = formData.author?.trim();
-    // Check if price is defined and is a valid number (not NaN)
+    // 检查价格是否存在且为数字
     const isValidPrice = formData.price !== undefined && !isNaN(formData.price);
 
-    // Name, Author, Price are always required
+    // 名称、作者、价格必填
     if (!name || !author || !isValidPrice) {
-      // Browser popup alert as requested
+      // 按要求使用浏览器弹窗
       window.alert("名称、作者和价格为必填项。");
       return;
     }
 
-    // Requirement: Cover Image is strictly required when creating a NEW game
-    // For Edit, coverUrl can be empty (meaning user removed it)
+    // 新建游戏时必须提供封面；编辑可为空（表示删除封面）
     if (!isEdit && !formData.coverUrl) {
       window.alert("创建新游戏时必须上传封面图片。");
       return;
@@ -98,11 +97,11 @@ const GameForm: React.FC = () => {
 
     try {
       if (isEdit && id) {
-        // Logic: Update
+        // 更新
         await GameApi.update(id, formData, token || undefined, sessionId || undefined);
         window.alert('游戏更新成功！');
       } else {
-        // Logic: Add
+        // 新增
         await GameApi.add(formData as Omit<Game, 'id'>, token || undefined, sessionId || undefined);
         window.alert('游戏添加成功！');
       }
@@ -116,7 +115,7 @@ const GameForm: React.FC = () => {
       return;
     }
 
-    // Return to list with params preserved
+    // 返回列表并保留查询参数
     navigate(`/games?${searchParams.toString()}`);
   };
 
@@ -195,7 +194,7 @@ const GameForm: React.FC = () => {
              />
           </div>
 
-          {/* Image Upload */}
+          {/* 封面上传 */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">封面图片 {isEdit ? '(可选)' : '*'}</label>
             <div className="flex items-start space-x-4">

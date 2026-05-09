@@ -3,7 +3,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { GameApi } from '../services/api';
 import { Game } from '../types';
 
-// Requirements: Use recharts.
+// 需求：使用 recharts 展示数据
 const Stats: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
 
@@ -11,7 +11,7 @@ const Stats: React.FC = () => {
     GameApi.list().then(setGames).catch(() => setGames([]));
   }, []);
 
-  // Prepare data: Count games per author
+  // 统计每个作者的游戏数量
   const authorData = Object.values(games.reduce((acc: any, game) => {
     if (!acc[game.author]) acc[game.author] = { name: game.author, count: 0 };
     acc[game.author].count++;

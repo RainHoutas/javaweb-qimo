@@ -1,36 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { GameApi } from '../services/api';
+import { GameService } from '../services/mockDatabase';
 import { Game } from '../types';
 import { Icons, ITEMS_PER_PAGE } from '../constants';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { utils, writeFile } from 'xlsx';
-import { useAuth } from '../App';
 
 const GameList: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { token, sessionId, user } = useAuth();
-  const isAdmin = user?.role === 'admin';
 
-  // 从 URL 参数初始化筛选条件
+  // State initialization from URL params
   const [nameFilter, setNameFilter] = useState(searchParams.get('name') || '');
   const [authorFilter, setAuthorFilter] = useState(searchParams.get('author') || '');
-  // 价格区间状态
+  // Price Range State
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
   
   const [games, setGames] = useState<Game[]>([]);
   
-  // 对话框状态
+  // Dialog States
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   
-  // 视图模式：分页视图 pagination 或滚动视图 scroll
-  // 修复：从 URL 初始化以便导航后保持模式
-  const [viewMode, setViewMode] = useState<'pagination' | 'scroll'>((searchParams.get('view') as 'pagination' | 'scroll') || 'pagination');
+  // View Mode: 'pagination' (Paged Table) or 'scroll' (Vertical Scroll Table All)
+  const [viewMode, setViewMode] = useState<'pagination' | 'scroll'>('pagination');
 
-  // 当筛选条件变化时同步到 URL
+  // Sync state to URL whenever filters change
   useEffect(() => {
     const params: any = {};
     if (nameFilter) params.name = nameFilter;
@@ -38,10 +34,7 @@ const GameList: React.FC = () => {
     if (minPrice) params.minPrice = minPrice;
     if (maxPrice) params.maxPrice = maxPrice;
     
-    // 修复：将视图模式写入 URL
-    params.view = viewMode;
-
-    // 仅在分页模式下同步页码
+    // Only persist page if in pagination mode
     if (viewMode === 'pagination') {
         const currentPage = searchParams.get('page') || '1';
         params.page = currentPage;
@@ -49,22 +42,21 @@ const GameList: React.FC = () => {
     setSearchParams(params, { replace: true });
   }, [nameFilter, authorFilter, minPrice, maxPrice, setSearchParams, viewMode]);
 
-  const refreshGames = async () => {
-    const list = await GameApi.list(token || undefined, sessionId || undefined);
-    setGames(list);
+  const refreshGames = () => {
+    setGames(GameService.getAll());
   };
 
   useEffect(() => {
     refreshGames();
   }, []);
 
-  // 过滤逻辑
+  // Filtering Logic
   const filteredGames = useMemo(() => {
     return games.filter(g => {
       const matchName = g.name.toLowerCase().includes(nameFilter.toLowerCase());
       const matchAuthor = g.author.toLowerCase().includes(authorFilter.toLowerCase());
       
-      // 价格区间逻辑
+      // Price Range Logic
       const priceVal = g.price;
       const min = minPrice !== '' ? parseFloat(minPrice) : 0;
       const max = maxPrice !== '' ? parseFloat(maxPrice) : Infinity;
@@ -74,7 +66,7 @@ const GameList: React.FC = () => {
     });
   }, [games, nameFilter, authorFilter, minPrice, maxPrice]);
 
-  // 分页逻辑
+  // Pagination Logic
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);
   const paginatedGames = filteredGames.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -85,21 +77,16 @@ const GameList: React.FC = () => {
     setSearchParams(params);
   };
 
-  // 根据视图模式决定展示的游戏数据
+  // Determine which games to display based on view mode
   const gamesToShow = viewMode === 'pagination' ? paginatedGames : filteredGames;
 
-  // 操作
+  // Actions
   const handleEditClick = (id: string) => {
-    setEditId(id); // 打开对话框而不是立即导航
+    setEditId(id); // Open dialog instead of immediate navigate
   };
 
   const confirmEdit = () => {
     if (editId) {
-      if (!isAdmin) {
-        alert('权限不足：只有管理员可以编辑游戏。');
-        setEditId(null);
-        return;
-      }
       const params = new URLSearchParams(searchParams);
       navigate(`/games/edit/${editId}?${params.toString()}`);
       setEditId(null);
@@ -107,36 +94,24 @@ const GameList: React.FC = () => {
   };
 
   const handleDeleteClick = (id: string) => {
-    if (!isAdmin) {
-      alert('权限不足：只有管理员可以删除游戏。');
-      return;
-    }
     setDeleteId(id);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (deleteId) {
-      try {
-        await GameApi.remove(deleteId, token || undefined, sessionId || undefined);
-        await refreshGames();
-        setDeleteId(null);
-        if (viewMode === 'pagination' && paginatedGames.length === 1 && currentPage > 1) {
-            handlePageChange(currentPage - 1);
-        }
-        alert('游戏删除成功。');
-      } catch (err: any) {
-        const msg = String(err?.message || err || '');
-        if (msg.includes('403')) {
-          alert('权限不足：只有管理员可以删除游戏。');
-        } else {
-          alert(`删除失败：${msg}`);
-        }
+      GameService.delete(deleteId);
+      refreshGames();
+      setDeleteId(null);
+      // Ensure we don't stay on an empty page
+      if (viewMode === 'pagination' && paginatedGames.length === 1 && currentPage > 1) {
+          handlePageChange(currentPage - 1);
       }
+      alert('游戏删除成功。');
     }
   };
 
   const handleExport = () => {
-    // 1. 为 Excel 准备数据映射
+    // 1. Prepare data mapping for Excel
     const exportData = filteredGames.map(game => ({
       "游戏ID": game.id,
       "游戏名称": game.name,
@@ -146,30 +121,30 @@ const GameList: React.FC = () => {
       "简介": game.description || "无"
     }));
 
-    // 2. 创建工作表
+    // 2. Create Sheet
     const ws = utils.json_to_sheet(exportData);
 
-    // 3. 创建工作簿并追加工作表
+    // 3. Create Workbook and append sheet
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "游戏列表");
 
-    // 4. 触发下载
+    // 4. Download file
     writeFile(wb, `CyberStore_Export_${Date.now()}.xlsx`);
   };
 
-  // 当前待编辑的游戏，用于弹窗显示名称
+  // Get current game object to display name in dialog
   const gameToEdit = games.find(g => g.id === editId);
 
   return (
     <div className="space-y-6">
-      {/* 顶部与操作区域 */}
+      {/* Header & Controls */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-900/50 p-6 rounded-xl border border-slate-800 backdrop-blur-sm">
         <div>
           <h1 className="text-2xl font-bold text-white">游戏库</h1>
           <p className="text-slate-400 text-sm mt-1">管理您的数字库存</p>
         </div>
         <div className="flex flex-wrap gap-3 items-center">
-          {/* 视图切换 */}
+          {/* View Toggle */}
           <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700 mr-2">
             <button
               onClick={() => setViewMode('pagination')}
@@ -197,13 +172,7 @@ const GameList: React.FC = () => {
             导出 Excel
           </button>
           <button 
-            onClick={() => {
-              if (!isAdmin) {
-                alert('权限不足：只有管理员可以添加游戏。');
-                return;
-              }
-              navigate(`/games/add?${searchParams.toString()}`);
-            }}
+            onClick={() => navigate(`/games/add?${searchParams.toString()}`)}
             className="flex items-center px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg shadow-lg shadow-cyan-500/20 transition-all text-sm font-bold"
           >
             <Icons.Add className="w-4 h-4 mr-2" />
@@ -212,7 +181,7 @@ const GameList: React.FC = () => {
         </div>
       </div>
 
-      {/* 筛选区域 */}
+      {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/30 p-4 rounded-xl border border-slate-800">
         <div className="relative">
           <Icons.Search className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
@@ -240,7 +209,7 @@ const GameList: React.FC = () => {
             className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
           />
         </div>
-        {/* 价格区间筛选 */}
+        {/* Price Range Filter */}
         <div className="flex items-center space-x-2">
            <div className="relative flex-1">
              <span className="absolute left-3 top-2.5 text-slate-500 text-sm">$</span>
@@ -272,16 +241,16 @@ const GameList: React.FC = () => {
         </div>
       </div>
 
-      {/* 统一表格视图 */}
+      {/* Unified Table View */}
       <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden animate-in fade-in duration-300 flex flex-col">
-        {/* 表格容器 */}
+        {/* Table Container */}
         <div className={`${
             viewMode === 'scroll' 
                 ? 'overflow-y-auto h-[600px] scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900' 
                 : 'overflow-x-auto'
         }`}>
           <table className="w-full text-left text-sm text-slate-400">
-            {/* 仅在滚动模式下吸顶表头 */}
+            {/* Sticky Header only for Scroll mode */}
             <thead className={`bg-slate-800/80 text-xs uppercase font-medium text-slate-300 ${
                 viewMode === 'scroll' ? 'sticky top-0 z-10 backdrop-blur-md shadow-sm' : ''
             }`}>
@@ -324,7 +293,7 @@ const GameList: React.FC = () => {
                         </button>
                         <button 
                             onClick={() => handleEditClick(game.id)}
-                            className="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors border border-cyan-500/20"
+                            className="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors border border-cyan-500/20" 
                             title="编辑">
                             <Icons.Edit className="w-4 h-4" />
                         </button>
@@ -349,7 +318,7 @@ const GameList: React.FC = () => {
           </table>
         </div>
         
-        {/* 分页模式下的分页控制 */}
+        {/* Pagination Controls (Only in Pagination Mode) */}
         {viewMode === 'pagination' && totalPages > 1 && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800 bg-slate-900/30">
                 <span className="text-xs text-slate-500">
@@ -374,7 +343,7 @@ const GameList: React.FC = () => {
             </div>
         )}
 
-        {/* 滚动模式下的页脚说明 */}
+        {/* Footer info for Scroll Mode */}
         {viewMode === 'scroll' && (
              <div className="px-6 py-2 bg-slate-900/30 border-t border-slate-800 text-xs text-center text-slate-500">
                 已加载所有 {filteredGames.length} 款游戏（垂直滚动查看更多）
@@ -382,8 +351,8 @@ const GameList: React.FC = () => {
         )}
       </div>
 
-      {/* 编辑确认弹窗 */}
-      <ConfirmDialog
+      {/* Edit Dialog */}
+      <ConfirmDialog 
         isOpen={!!editId}
         title="确认修改"
         message={`是否确认修改 ${gameToEdit?.name || '该游戏'}?`}
@@ -392,8 +361,8 @@ const GameList: React.FC = () => {
         type="info"
       />
 
-      {/* 删除确认弹窗 */}
-      <ConfirmDialog
+      {/* Delete Dialog */}
+      <ConfirmDialog 
         isOpen={!!deleteId}
         title="删除游戏"
         message="您确定要从商店中永久删除此游戏吗？此操作无法撤销。"
@@ -406,4 +375,3 @@ const GameList: React.FC = () => {
 };
 
 export default GameList;
-
